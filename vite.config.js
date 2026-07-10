@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 export default defineConfig({
-    base:'/material-art-store/'
     plugins: [react()],
+    base:'/store/'
     }
-});
+);
