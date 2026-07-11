@@ -18,6 +18,13 @@ const LOCAL_TO_D1_ID: Record<string, string> = {
   'studio-admin': '10',
 };
 
+function resolveD1Id(productId: string): string {
+  if (productId.startsWith('remote-')) {
+    return productId.replace('remote-', '');
+  }
+  return LOCAL_TO_D1_ID[productId] || '1';
+}
+
 export default function ProductDetail() {
   const { id } = useParams();
   const product = products.find((item) => item.id === id) ?? products[0];
@@ -30,8 +37,12 @@ export default function ProductDetail() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    setReviews([]);
+  }, [product.id]);
+
   const loadReviews = useCallback(async () => {
-    const d1Id = LOCAL_TO_D1_ID[product.id] || '1';
+    const d1Id = resolveD1Id(product.id);
     try {
       const data = await api.getReviews(d1Id);
       setReviews(data);
@@ -52,7 +63,7 @@ export default function ProductDetail() {
     if (!user) return;
     setSubmitting(true);
     try {
-      const d1Id = LOCAL_TO_D1_ID[product.id] || '1';
+      const d1Id = resolveD1Id(product.id);
       const commentText = comment.trim() || 'Great product!';
       await api.addReview(d1Id, rating, commentText, user.name);
       setComment('');
