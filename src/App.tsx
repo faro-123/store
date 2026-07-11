@@ -1,22 +1,27 @@
-import { AnimatePresence, motion } from 'framer-motion';
+﻿import { AnimatePresence, motion } from 'framer-motion';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import CartDrawer from './components/CartDrawer';
 import AuthModal from './components/AuthModal';
+import SearchOverlay from './components/SearchOverlay';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
 import Downloads from './pages/Downloads';
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const isDev = import.meta.env.DEV;
 
 export default function App() {
   const location = useLocation();
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#f7f5ef] text-slate-950 bg-mesh">
-      <Header onCart={() => setCartOpen(true)} onAuth={() => setAuthOpen(true)} />
+      <Header onCart={() => setCartOpen(true)} onAuth={() => setAuthOpen(true)} onSearch={() => setSearchOpen(true)} />
       <AnimatePresence mode="wait">
         <motion.main
           key={location.pathname}
@@ -30,11 +35,15 @@ export default function App() {
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/checkout" element={<Checkout onAuth={() => setAuthOpen(true)} />} />
             <Route path="/downloads" element={<Downloads />} />
+            {isDev && (
+              <Route path="/dashboard" element={<Suspense fallback={null}><Dashboard /></Suspense>} />
+            )}
           </Routes>
         </motion.main>
       </AnimatePresence>
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

@@ -1,16 +1,28 @@
-import { Download, LogIn, PackageCheck, Search, ShoppingBag, Sparkles, UserCircle } from 'lucide-react';
+import { BarChart3, Download, LogIn, PackageCheck, Search, ShoppingBag, Sparkles, UserCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link, NavLink } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 
+const isDev = import.meta.env.DEV;
+
 type Props = {
   onCart: () => void;
   onAuth: () => void;
+  onSearch: () => void;
 };
 
-export default function Header({ onCart, onAuth }: Props) {
+export default function Header({ onCart, onAuth, onSearch }: Props) {
   const cartCount = useStore((state) => state.cart.reduce((sum, item) => sum + item.quantity, 0));
   const user = useStore((state) => state.user);
+
+  const navItems: [string, string][] = [
+    ['/', '商店'],
+    ['/checkout', '结账'],
+    ['/downloads', '下载'],
+  ];
+  if (isDev) {
+    navItems.push(['/dashboard', '仪表盘']);
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/60 bg-[#f7f5ef]/80 backdrop-blur-2xl">
@@ -26,11 +38,7 @@ export default function Header({ onCart, onAuth }: Props) {
         </Link>
 
         <nav className="ml-auto hidden items-center rounded-full border border-white/70 bg-white/60 p-1 shadow-sm md:flex">
-          {[
-            ['/', '商店'],
-            ['/checkout', '结账'],
-            ['/downloads', '下载']
-          ].map(([to, label]) => (
+          {navItems.map(([to, label]) => (
             <NavLink
               key={to}
               to={to}
@@ -46,9 +54,14 @@ export default function Header({ onCart, onAuth }: Props) {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <a href="/#catalog" className="icon-button" aria-label="搜索商品" title="搜索商品">
+          {isDev && (
+            <Link to="/dashboard" className="icon-button md:hidden" aria-label="仪表盘" title="仪表盘">
+              <BarChart3 size={18} />
+            </Link>
+          )}
+          <button className="icon-button" onClick={onSearch} aria-label="搜索商品" title="搜索商品">
             <Search size={18} />
-          </a>
+          </button>
           <Link to="/downloads" className="icon-button" aria-label="下载中心" title="下载中心">
             <Download size={18} />
           </Link>

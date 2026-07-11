@@ -3,8 +3,9 @@ import { ArrowRight, Boxes, Layers3, Palette, Plug, Search, SlidersHorizontal, S
 import { useEffect, useMemo, useState } from 'react';
 import ProductCard from '../components/ProductCard';
 import SkeletonGrid from '../components/SkeletonGrid';
-import { categories, products } from '../data/products';
-import { CategoryId } from '../types';
+import { categories, products as localProducts } from '../data/products';
+import { CategoryId, Product } from '../types';
+import { api } from '../services/api';
 
 type Props = {
   onAuth: () => void;
@@ -17,15 +18,59 @@ const categoryIcons = {
   plugins: Plug
 };
 
+function mapBackendProduct(raw: any): Product {
+  let tags: string[] = [];
+  try { tags = typeof raw.tags === 'string' ? JSON.parse(raw.tags) : raw.tags || []; } catch (e) {}
+  let features: string[] = [];
+  try { features = typeof raw.features === 'string' ? JSON.parse(raw.features) : raw.features || []; } catch (e) {}
+
+  return {
+    id: `remote-${raw.id}`,
+    title: raw.name || raw.title || '',
+    category: (['ui', 'tools', 'templates', 'plugins'] as CategoryId[]).includes(raw.category)
+      ? raw.category as CategoryId
+      : 'tools',
+    description: raw.description || '',
+    price: Number(raw.price) || 0,
+    rating: Number(raw.rating) || 0,
+    reviews: Number(raw.reviews_count) || 0,
+    tags,
+    accent: raw.accent || '#14b8a6',
+    image: raw.image || raw.image_url || '',
+    demoUrl: raw.demo_url || '',
+    code: raw.code_preview || '',
+    features,
+  };
+}
+
 export default function Home({ onAuth }: Props) {
   const [active, setActive] = useState<CategoryId | 'all'>('all');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [remoteProducts, setRemoteProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 720);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    api.getProducts()
+      .then((data) => setRemoteProducts(data.map(mapBackendProduct)))
+      .catch(() => {});
+  }, []);
+
+  const products = useMemo(() => {
+    const seen = new Set(localProducts.map((p) => p.id));
+    const merged = [...localProducts];
+    for (const rp of remoteProducts) {
+      if (!seen.has(rp.id)) {
+        merged.push(rp);
+        seen.add(rp.id);
+      }
+    }
+    return merged;
+  }, [remoteProducts]);
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
@@ -33,7 +78,7 @@ export default function Home({ onAuth }: Props) {
       const text = `${product.title} ${product.description} ${product.tags.join(' ')}`.toLowerCase();
       return matchesCategory && text.includes(query.toLowerCase());
     });
-  }, [active, query]);
+  }, [active, query, products]);
 
   return (
     <>
