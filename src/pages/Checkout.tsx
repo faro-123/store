@@ -2,7 +2,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, CreditCard, Download, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { cartTotal, currency, getProduct } from '../utils';
+import { cartTotal, currency, findProduct, getProduct } from '../utils';
+import { useEffect, useState } from 'react';
+import { api } from '../services/api';
+import { Product, CategoryId } from '../types';
 
 type Props = {
   onAuth: () => void;
@@ -13,7 +16,36 @@ export default function Checkout({ onAuth }: Props) {
   const user = useStore((state) => state.user);
   const completeCheckout = useStore((state) => state.completeCheckout);
   const navigate = useNavigate();
-  const total = cartTotal(cart);
+
+  const [remoteProducts, setRemoteProducts] = useState<{ id: string; title: string; description: string; image: string; price: number; demoUrl: string; features: string[]; tags: string[]; code: string; accent: string }[]>([]);
+
+  useEffect(() => {
+    api.getProducts()
+      .then((data) => {
+        const mapped = data.map((raw: any) => {
+          let tags: string[] = [];
+          try { tags = typeof raw.tags === 'string' ? JSON.parse(raw.tags) : raw.tags || []; } catch {}
+          let features: string[] = [];
+          try { features = typeof raw.features === 'string' ? JSON.parse(raw.features) : raw.features || []; } catch {}
+          return {
+            id: `remote-${raw.id}`,
+            title: raw.name || '',
+            description: raw.description || '',
+            image: raw.image || raw.image_url || '',
+            price: Number(raw.price) || 0,
+            demoUrl: raw.demo_url || '',
+            features,
+            tags,
+            code: raw.code_preview || '',
+            accent: raw.accent || '#14b8a6',
+          };
+        });
+        setRemoteProducts(mapped);
+      })
+      .catch(() => {});
+  }, []);
+
+  const total = cartTotal(cart, remoteProducts);
 
   async function pay() {
     if (!user) {
@@ -21,7 +53,7 @@ export default function Checkout({ onAuth }: Props) {
       return;
     }
     const productIds = cart.map((item) => {
-      const p = getProduct(item.productId);
+      const p = findProduct(item.productId, remoteProducts);
       if (!p) return null;
       if (p.id.startsWith('remote-')) return parseInt(p.id.replace('remote-', ''));
       return p.title;
@@ -90,7 +122,7 @@ export default function Checkout({ onAuth }: Props) {
             <h2 className="text-xl font-black">订单商品</h2>
             <AnimatePresence>
               {cart.map((item) => {
-                const product = getProduct(item.productId);
+                const product = findProduct(item.productId, remoteProducts);
                 if (!product) return null;
                 return (
                   <motion.div

@@ -13,15 +13,6 @@ type Props = {
 
 type ReviewStats = { product_id: number; avg_rating: number; count: number };
 
-const D1_NAME_TO_LOCAL_ID: Record<string, string> = {
-  'Aurora UI Kit': 'aurora-kit',
-  'Motion Lab': 'motion-lab',
-  'Commerce Canvas': 'commerce-canvas',
-  'CMS Spark Plugin': 'cms-spark',
-  'Chart Foundry': 'chart-foundry',
-  'Studio Admin Pro': 'studio-admin',
-};
-
 const categoryIcons = {
   ui: Palette,
   tools: Wand2,
@@ -52,26 +43,6 @@ function mapBackendProduct(raw: any): Product {
     code: raw.code_preview || '',
     features,
   };
-}
-
-function resolveReviewStats(productId: string, stats: ReviewStats[]): { avg_rating: number; count: number } | undefined {
-  if (productId.startsWith('remote-')) {
-    const d1Id = parseInt(productId.replace('remote-', ''));
-    return stats.find((s) => s.product_id === d1Id);
-  }
-  const localName = localProducts.find((p) => p.id === productId)?.title;
-  if (!localName) return undefined;
-  const d1IdStr = D1_NAME_TO_LOCAL_ID[localName];
-  const inverse: Record<string, string> = {};
-  for (const [k, v] of Object.entries(D1_NAME_TO_LOCAL_ID)) {
-    inverse[v] = k;
-  }
-  const actualName = inverse[productId];
-  const actualId = Object.keys(D1_NAME_TO_LOCAL_ID).indexOf(localName) >= 0
-    ? parseInt(Object.entries(D1_NAME_TO_LOCAL_ID).find(([, v]) => v === productId)?.[0] ? '' : '0') || 0
-    : 0;
-  const match = stats.find((s) => s.product_id === actualId || s.product_id === parseInt(d1IdStr));
-  return match;
 }
 
 export default function Home({ onAuth }: Props) {

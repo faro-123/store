@@ -74,14 +74,14 @@ app.post('/api/auth/register', async (c) => {
       .run()
     return c.json({ success: true, userId: result.meta.last_row_id, email: email || null })
   } catch (err) {
-    return c.json({ success: false, message: "username already exists" }, 400)
+    return c.json({ success: false, message: "用户名已存在" }, 400)
   }
 })
 
 app.post('/api/auth/login', async (c) => {
   const { username, password } = await c.req.json()
   if (!username || !password) {
-    return c.json({ success: false, message: "username and password required" }, 400)
+    return c.json({ success: false, message: "请输入用户名和密码" }, 400)
   }
   const user = await c.env.DB.prepare("SELECT id, email FROM users WHERE username = ? AND password = ?")
     .bind(username, password)
@@ -90,7 +90,7 @@ app.post('/api/auth/login', async (c) => {
   if (user) {
     return c.json({ success: true, userId: user.id, email: user.email })
   }
-  return c.json({ success: false, message: "invalid credentials" }, 401)
+  return c.json({ success: false, message: "用户名或密码错误" }, 401)
 })
 
 // ==================== Users API ====================
