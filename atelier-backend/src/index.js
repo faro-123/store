@@ -109,8 +109,24 @@ app.post('/api/checkout', async (c) => {
     return c.json({ success: false, message: "请先登录并选择商品" }, 400)
   }
 
-  const stmt = c.env.DB.prepare("INSERT INTO orders (user_id, product_id) VALUES (?, ?)")
+  const resolvedIds = []
   for (const pid of productIds) {
+    if (typeof pid === 'number' || /^\d+$/.test(String(pid))) {
+      resolvedIds.push(Number(pid))
+    } else {
+      const product = await c.env.DB.prepare("SELECT id FROM products WHERE name = ?").bind(String(pid)).first()
+      if (product) {
+        resolvedIds.push(product.id)
+      }
+    }
+  }
+
+  if (resolvedIds.length === 0) {
+    return c.json({ success: false, message: "未找到有效商品" }, 400)
+  }
+
+  const stmt = c.env.DB.prepare("INSERT INTO orders (user_id, product_id) VALUES (?, ?)")
+  for (const pid of resolvedIds) {
     await stmt.bind(userId, pid).run()
   }
 
@@ -188,15 +204,18 @@ app.post('/api/orders/simulate', async (c) => {
 
 app.get('/api/products/:id/reviews', async (c) => {
   const productId = c.req.param('id')
-  const { results } = await c.env.DB.prepare("SELECT * FROM reviews WHERE product_id = ?").bind(productId).all()
+  const { results } = await c.env.DB.prepare("SELECT id, product_id, rating, comment, username, created_at FROM reviews WHERE product_id = ? ORDER BY created_at DESC").bind(productId).all()
   return c.json(results)
 })
 
 app.post('/api/products/:id/reviews', async (c) => {
   const productId = c.req.param('id')
-  const { rating, comment } = await c.req.json()
-  await c.env.DB.prepare("INSERT INTO reviews (product_id, rating, comment) VALUES (?, ?, ?)")
-    .bind(productId, rating, comment)
+  const { rating, comment, username } = await c.req.json()
+  if (!rating || !username) {
+    return c.json({ success: false, message: "rating and username required" }, 400)
+  }
+  await c.env.DB.prepare("INSERT INTO reviews (product_id, rating, comment, username) VALUES (?, ?, ?, ?)")
+    .bind(productId, rating, comment || '', username)
     .run()
   return c.json({ success: true })
 })

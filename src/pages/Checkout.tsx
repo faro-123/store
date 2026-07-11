@@ -24,7 +24,7 @@ export default function Checkout({ onAuth }: Props) {
       const p = getProduct(item.productId);
       if (!p) return null;
       if (p.id.startsWith('remote-')) return parseInt(p.id.replace('remote-', ''));
-      return p.id;
+      return p.title;
     }).filter(Boolean) as (number | string)[];
 
     if (productIds.length > 0) {

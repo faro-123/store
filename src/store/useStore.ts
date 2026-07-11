@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import { CartItem, User } from '../types';
 import { api } from '../services/api';
 
+const D1_NAME_TO_LOCAL_ID: Record<string, string> = {
+  'Aurora UI Kit': 'aurora-kit',
+  'Motion Lab': 'motion-lab',
+  'Commerce Canvas': 'commerce-canvas',
+  'CMS Spark Plugin': 'cms-spark',
+  'Chart Foundry': 'chart-foundry',
+  'Studio Admin Pro': 'studio-admin',
+};
+
 type StoreState = {
   cart: CartItem[];
   purchased: string[];
@@ -38,7 +47,10 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ user });
     if (user.userId) {
       api.getDownloads(Number(user.userId)).then((data) => {
-        const ids = data.map((p: any) => `remote-${p.id}`);
+        const ids = data.map((p: any) => {
+          const localId = D1_NAME_TO_LOCAL_ID[p.name];
+          return localId || `remote-${p.id}`;
+        });
         set({ purchased: ids });
       }).catch(() => {});
     }

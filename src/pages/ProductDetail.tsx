@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft, ExternalLink, ShoppingBag, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ShoppingBag, Star } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { products } from '../data/products';
 import { useStore } from '../store/useStore';
 import { currency } from '../utils';
@@ -25,7 +25,6 @@ export default function ProductDetail() {
   const user = useStore((state) => state.user);
 
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewIdx, setReviewIdx] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -43,6 +42,12 @@ export default function ProductDetail() {
 
   const displayReviews = reviews.length > 0 ? reviews : [];
 
+  const avgRating = useMemo(() => {
+    if (displayReviews.length === 0) return 0;
+    const sum = displayReviews.reduce((acc, r) => acc + r.rating, 0);
+    return Number((sum / displayReviews.length).toFixed(1));
+  }, [displayReviews]);
+
   async function submitReview() {
     if (!user) return;
     setSubmitting(true);
@@ -55,6 +60,15 @@ export default function ProductDetail() {
       setShowForm(false);
       await loadReviews();
     } catch {} finally { setSubmitting(false); }
+  }
+
+  function formatDate(dateStr: string) {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
   }
 
   return (
@@ -77,8 +91,10 @@ export default function ProductDetail() {
           <h1 className="mt-5 text-4xl font-black">{product.title}</h1>
           <p className="mt-4 text-lg leading-8 text-slate-600">{product.description}</p>
           <div className="mt-5 flex items-center gap-2 font-bold text-slate-700">
-            <Star size={18} fill="#f59e0b" color="#f59e0b" />
-            {product.rating} · {displayReviews.length || product.reviews} reviews
+            <Star size={18} fill={avgRating > 0 ? '#f59e0b' : 'none'} color={avgRating > 0 ? '#f59e0b' : '#d1d5db'} />
+            <span>{avgRating > 0 ? avgRating : '-'}</span>
+            <span>·</span>
+            <span>{displayReviews.length} 条评价</span>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <span className="text-4xl font-black">{currency.format(product.price)}</span>
@@ -142,45 +158,40 @@ export default function ProductDetail() {
         </section>
       </div>
 
-      <div className="mt-8">
-        <h2 className="text-center text-3xl font-black">User Rating 😍</h2>
-        <div className="mt-4 relative overflow-hidden rounded-[28px] bg-slate-900 p-6 shadow-lift">
-          {displayReviews.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate-400">No reviews yet. Be the first to review!</p>
-          ) : (
-            <>
-              <div className="flex flex-col items-center text-center">
-                <div className="flex gap-1 text-amber-400">
-                  {Array.from({ length: displayReviews[reviewIdx]?.rating || 5 }).map((_, s) => (
-                    <Star key={s} size={24} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="mt-4 max-w-md text-lg text-white/80">{displayReviews[reviewIdx]?.comment || '(no comment)'}</p>
-                <p className="mt-4 text-sm font-bold text-amber-300">{displayReviews[reviewIdx]?.username || 'anonymous'}</p>
-              </div>
-              {displayReviews.length > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-3">
-                  <button onClick={() => setReviewIdx((i) => (i - 1 + displayReviews.length) % displayReviews.length)} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70 hover:bg-white/20">
-                    <ChevronLeft size={16} />
-                  </button>
-                  <div className="flex gap-1.5">
-                    {displayReviews.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setReviewIdx(i)}
-                        className={`rounded-full transition-all ${i === reviewIdx ? 'h-2 w-6 bg-white' : 'h-2 w-2 bg-white/30'}`}
-                      />
-                    ))}
+      <section className="mt-8">
+        <h2 className="text-2xl font-black">用户评价 ({displayReviews.length})</h2>
+        {displayReviews.length === 0 ? (
+          <div className="mt-4 rounded-[24px] border border-dashed border-slate-200 bg-white/50 py-12 text-center">
+            <p className="text-sm text-slate-400">暂无评价，成为第一个评价的人吧！</p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {displayReviews.map((review) => (
+              <div key={review.id} className="rounded-[20px] border border-white/70 bg-white/75 p-5 shadow-sm backdrop-blur">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">
+                      {(review.username || '?')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{review.username || 'anonymous'}</p>
+                      <div className="mt-0.5 flex gap-0.5">
+                        {[1,2,3,4,5].map((s) => (
+                          <Star key={s} size={13} fill={s <= review.rating ? '#f59e0b' : 'none'} color={s <= review.rating ? '#f59e0b' : '#d1d5db'} />
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <button onClick={() => setReviewIdx((i) => (i + 1) % displayReviews.length)} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70 hover:bg-white/20">
-                    <ChevronRight size={16} />
-                  </button>
+                  <span className="text-xs text-slate-400">{formatDate(review.created_at)}</span>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                {review.comment ? (
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{review.comment}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 }
