@@ -3,7 +3,6 @@ import { Check, CreditCard, Download, LockKeyhole, ShieldCheck } from 'lucide-re
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { cartTotal, currency, getProduct } from '../utils';
-import { api } from '../services/api';
 
 type Props = {
   onAuth: () => void;
@@ -24,12 +23,17 @@ export default function Checkout({ onAuth }: Props) {
     const productIds = cart.map((item) => {
       const p = getProduct(item.productId);
       if (!p) return null;
-      return p.id.startsWith('remote-') ? parseInt(p.id.replace('remote-', '')) : null;
-    }).filter(Boolean) as number[];
+      if (p.id.startsWith('remote-')) return parseInt(p.id.replace('remote-', ''));
+      return p.id;
+    }).filter(Boolean) as (number | string)[];
 
     if (productIds.length > 0) {
       try {
-        await api.checkout(Number(user.userId), productIds);
+        await fetch('https://atelier-api.farozelmo2436.workers.dev/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: Number(user.userId), productIds }),
+        });
       } catch {}
     }
     completeCheckout();

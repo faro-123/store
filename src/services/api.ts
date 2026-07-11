@@ -58,4 +58,12 @@ export const api = {
 
   deleteProduct: (id: number) =>
     request<{ success: boolean }>(`/api/products/${id}`, { method: 'DELETE' }),
+
+  getReviews: (productId: string) =>
+    request<{ id: number; product_id: number; rating: number; comment: string; username: string; created_at: string }[]>(`/api/products/${productId}/reviews`),
+
+  addReview: (productId: string, rating: number, comment: string, username: string) =>
+    request<{ success: boolean }>(`/api/products/${productId}/reviews`, {
+      method: 'POST', body: JSON.stringify({ rating, comment, username }),
+    }),
 };

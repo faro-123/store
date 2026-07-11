@@ -15,6 +15,7 @@ export default function AuthModal({ open, onClose }: Props) {
   const user = useStore((state) => state.user);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [serverMsg, setServerMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,8 +30,9 @@ export default function AuthModal({ open, onClose }: Props) {
       return;
     }
 
-    if (mode === 'register') {
-      try {
+    setSubmitting(true);
+    try {
+      if (mode === 'register') {
         const res = await api.register(username, password, email || undefined);
         if (res.success && res.userId) {
           login({
@@ -40,13 +42,9 @@ export default function AuthModal({ open, onClose }: Props) {
           });
           onClose();
         } else {
-          setServerMsg(res.message || '注册失败');
+          setServerMsg(res.message || '密码或账号错误');
         }
-      } catch {
-        setServerMsg('网络错误，请稍后重试');
-      }
-    } else {
-      try {
+      } else {
         const res = await api.login(username, password);
         if (res.success && res.userId) {
           login({
@@ -56,11 +54,13 @@ export default function AuthModal({ open, onClose }: Props) {
           });
           onClose();
         } else {
-          setServerMsg(res.message || '用户名或密码错误');
+          setServerMsg(res.message || '密码或账号错误');
         }
-      } catch {
-        setServerMsg('网络错误，请稍后重试');
       }
+    } catch (e: any) {
+      setServerMsg(e?.message || '密码或账号错误');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -116,8 +116,8 @@ export default function AuthModal({ open, onClose }: Props) {
                 <input className="field" name="email" type="email" placeholder="邮箱（选填）" />
                 <input className="field" name="password" type="password" placeholder="密码" required />
                 {serverMsg && <p className="text-sm text-rose-500 font-bold">{serverMsg}</p>}
-                <button className="primary-button w-full" type="submit">
-                  {mode === 'login' ? '进入商店' : '创建并登录'}
+                <button className="primary-button w-full" type="submit" disabled={submitting}>
+                  {submitting ? '请稍后...' : mode === 'login' ? '进入商店' : '创建并登录'}
                 </button>
               </form>
             )}
