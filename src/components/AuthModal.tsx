@@ -20,18 +20,24 @@ export default function AuthModal({ open, onClose }: Props) {
     event.preventDefault();
     setServerMsg('');
     const data = new FormData(event.currentTarget);
-    const username = String(data.get('name') || 'Designer');
-    const password = String(data.get('password') || 'password123');
-    const email = String(data.get('email') || '');
+    const username = String(data.get('name') || '').trim();
+    const password = String(data.get('password') || '');
+    const email = String(data.get('email') || '').trim();
+
+    if (!username || !password) {
+      setServerMsg('用户名和密码不能为空');
+      return;
+    }
 
     if (mode === 'register') {
       try {
-        const res = email
-          ? await api.register(username, password, email)
-          : await api.register(username, password);
-        if (res.success) {
-          const ensured = await api.ensureUser(username, password, email);
-          login({ name: username, email: email || `${username}@example.com`, userId: String(ensured.userId) });
+        const res = await api.register(username, password, email || undefined);
+        if (res.success && res.userId) {
+          login({
+            name: username,
+            email: res.email || email || `${username}@example.com`,
+            userId: String(res.userId),
+          });
           onClose();
         } else {
           setServerMsg(res.message || '注册失败');
@@ -41,9 +47,17 @@ export default function AuthModal({ open, onClose }: Props) {
       }
     } else {
       try {
-        const ensured = await api.ensureUser(username, password, email);
-        login({ name: username, email: ensured.userEmail || email || `${username}@example.com`, userId: String(ensured.userId) });
-        onClose();
+        const res = await api.login(username, password);
+        if (res.success && res.userId) {
+          login({
+            name: username,
+            email: res.email || email || `${username}@example.com`,
+            userId: String(res.userId),
+          });
+          onClose();
+        } else {
+          setServerMsg(res.message || '用户名或密码错误');
+        }
       } catch {
         setServerMsg('网络错误，请稍后重试');
       }
@@ -99,7 +113,7 @@ export default function AuthModal({ open, onClose }: Props) {
                   ))}
                 </div>
                 <input className="field" name="name" placeholder="用户名" required />
-                <input className="field" name="email" type="email" placeholder="邮箱" />
+                <input className="field" name="email" type="email" placeholder="邮箱（选填）" />
                 <input className="field" name="password" type="password" placeholder="密码" required />
                 {serverMsg && <p className="text-sm text-rose-500 font-bold">{serverMsg}</p>}
                 <button className="primary-button w-full" type="submit">

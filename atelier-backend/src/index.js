@@ -65,49 +65,32 @@ app.delete('/api/products/:id', async (c) => {
 
 app.post('/api/auth/register', async (c) => {
   const { username, password, email } = await c.req.json()
+  if (!username || !password) {
+    return c.json({ success: false, message: "username and password required" }, 400)
+  }
   try {
-    await c.env.DB.prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)")
+    const result = await c.env.DB.prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)")
       .bind(username, password, email || null)
       .run()
-    return c.json({ success: true, message: "registered" })
+    return c.json({ success: true, userId: result.meta.last_row_id, email: email || null })
   } catch (err) {
-    return c.json({ success: false, message: "username exists" }, 400)
+    return c.json({ success: false, message: "用户名已存在" }, 400)
   }
 })
 
 app.post('/api/auth/login', async (c) => {
   const { username, password } = await c.req.json()
-  const user = await c.env.DB.prepare("SELECT * FROM users WHERE username = ? AND password = ?")
+  if (!username || !password) {
+    return c.json({ success: false, message: "请输入用户名和密码" }, 400)
+  }
+  const user = await c.env.DB.prepare("SELECT id, email FROM users WHERE username = ? AND password = ?")
     .bind(username, password)
     .first()
 
   if (user) {
-    return c.json({ success: true, token: `mock-jwt-token-${user.id}`, userId: user.id, email: user.email })
+    return c.json({ success: true, userId: user.id, email: user.email })
   }
-  return c.json({ success: false, message: "invalid credentials" }, 401)
-})
-
-app.post('/api/auth/ensure', async (c) => {
-  const { username, password, email } = await c.req.json()
-  const existing = await c.env.DB.prepare("SELECT id, email FROM users WHERE username = ?")
-    .bind(username)
-    .first()
-
-  if (existing) {
-    if (email && !existing.email) {
-      await c.env.DB.prepare("UPDATE users SET email = ? WHERE id = ?").bind(email, existing.id).run()
-    }
-    return c.json({ success: true, userId: existing.id })
-  }
-
-  try {
-    const result = await c.env.DB.prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)")
-      .bind(username, password || 'pass123', email || null)
-      .run()
-    return c.json({ success: true, userId: result.meta.last_row_id })
-  } catch (err) {
-    return c.json({ success: false, message: "failed to create user" }, 400)
-  }
+  return c.json({ success: false, message: "用户名或密码错误" }, 401)
 })
 
 // ==================== Users API ====================
@@ -122,15 +105,13 @@ app.get('/api/users', async (c) => {
 app.post('/api/checkout', async (c) => {
   const { userId, productIds } = await c.req.json()
   
-  if (!productIds || productIds.length === 0) {
-    return c.json({ success: false, message: "invalid params" }, 400)
+  if (!userId || !productIds || productIds.length === 0) {
+    return c.json({ success: false, message: "请先登录并选择商品" }, 400)
   }
-
-  const effectiveUserId = Number(userId) || userId
 
   const stmt = c.env.DB.prepare("INSERT INTO orders (user_id, product_id) VALUES (?, ?)")
   for (const pid of productIds) {
-    await stmt.bind(effectiveUserId, pid).run()
+    await stmt.bind(userId, pid).run()
   }
 
   return c.json({ success: true, message: "payment success" })
@@ -141,7 +122,7 @@ app.get('/api/downloads', async (c) => {
   if (!userId) return c.json([], 401)
 
   const { results } = await c.env.DB.prepare(
-    `SELECT p.* FROM products p 
+    `SELECT DISTINCT p.* FROM products p 
      JOIN orders o ON p.id = o.product_id 
      WHERE o.user_id = ?`
   ).bind(userId).all()
@@ -152,6 +133,18 @@ app.get('/api/downloads', async (c) => {
 // ==================== Orders API ====================
 
 app.get('/api/orders', async (c) => {
+  const userId = c.req.query('userId')
+  if (userId) {
+    const { results } = await c.env.DB.prepare(
+      `SELECT o.id, u.username, u.email as user_email, p.name as product_name, p.price, o.purchase_date
+       FROM orders o 
+       LEFT JOIN users u ON o.user_id = u.id 
+       LEFT JOIN products p ON o.product_id = p.id
+       WHERE o.user_id = ?
+       ORDER BY o.purchase_date DESC`
+    ).bind(userId).all()
+    return c.json(results)
+  }
   const { results } = await c.env.DB.prepare(
     `SELECT o.id, u.username, u.email as user_email, p.name as product_name, p.price, o.purchase_date
      FROM orders o 

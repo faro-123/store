@@ -14,19 +14,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   register: (username: string, password: string, email?: string) =>
-    request<{ success: boolean; message: string }>('/api/auth/register', {
+    request<{ success: boolean; userId?: number; email?: string; message?: string }>('/api/auth/register', {
       method: 'POST', body: JSON.stringify({ username, password, email }),
     }),
 
-  ensureUser: (username: string, password: string, email?: string) =>
-    request<{ success: boolean; userId: number; userEmail?: string }>('/api/auth/ensure', {
-      method: 'POST', body: JSON.stringify({ username, password, email }),
+  login: (username: string, password: string) =>
+    request<{ success: boolean; userId?: number; email?: string; message?: string }>('/api/auth/login', {
+      method: 'POST', body: JSON.stringify({ username, password }),
     }),
 
-  checkout: (userId: string, productIds: number[]) =>
+  checkout: (userId: number, productIds: number[]) =>
     request<{ success: boolean; message: string }>('/api/checkout', {
       method: 'POST', body: JSON.stringify({ userId, productIds }),
     }),
+
+  getDownloads: (userId: number) =>
+    request<any[]>(`/api/downloads?userId=${userId}`),
 
   getOverview: () => request<{ totalUsers: number; totalOrders: number; totalRevenue: number }>('/api/stats/overview'),
 

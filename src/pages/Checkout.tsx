@@ -17,18 +17,22 @@ export default function Checkout({ onAuth }: Props) {
   const total = cartTotal(cart);
 
   async function pay() {
-    completeCheckout();
-    if (user) {
-      const productIds = cart.map((item) => {
-        const p = getProduct(item.productId);
-        if (!p) return null;
-        const numId = p.id.startsWith('remote-') ? parseInt(p.id.replace('remote-', '')) : null;
-        return numId;
-      }).filter(Boolean) as number[];
-      if (productIds.length > 0) {
-        api.checkout(user.userId, productIds).catch(() => {});
-      }
+    if (!user) {
+      onAuth();
+      return;
     }
+    const productIds = cart.map((item) => {
+      const p = getProduct(item.productId);
+      if (!p) return null;
+      return p.id.startsWith('remote-') ? parseInt(p.id.replace('remote-', '')) : null;
+    }).filter(Boolean) as number[];
+
+    if (productIds.length > 0) {
+      try {
+        await api.checkout(Number(user.userId), productIds);
+      } catch {}
+    }
+    completeCheckout();
     window.setTimeout(() => navigate('/downloads'), 360);
   }
 
@@ -56,7 +60,7 @@ export default function Checkout({ onAuth }: Props) {
                   {user.name} <span className="text-slate-400">/ {user.email}</span>
                 </p>
               ) : (
-                <p className="text-sm text-slate-500">可先登录，也可以直接体验模拟支付。</p>
+                <p className="text-sm text-slate-500">请先登录再购买，购买记录将保存到你的账号。</p>
               )}
             </div>
           </section>
@@ -113,7 +117,7 @@ export default function Checkout({ onAuth }: Props) {
             <span className="text-4xl font-black">{currency.format(total)}</span>
           </div>
           <div className="mt-6 space-y-3 text-sm text-white/70">
-            {['支付完成后自动进入下载中心', '购买记录实时同步到云端', '仪表盘可查看所有订单数据'].map((item) => (
+            {['需登录后购买，记录保存到云端', '购买后可在下载中心查看', '下次登录可重新下载'].map((item) => (
               <p key={item} className="flex items-center gap-2">
                 <Check size={16} className="text-teal-300" /> {item}
               </p>
@@ -121,12 +125,14 @@ export default function Checkout({ onAuth }: Props) {
           </div>
           <button disabled={cart.length === 0} onClick={pay} className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-4 font-black text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-45">
             <CreditCard size={18} />
-            模拟支付
+            {user ? '模拟支付' : '登录后支付'}
           </button>
-          <Link to="/downloads" className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-white/10 px-5 py-4 font-black text-white transition hover:bg-white/20">
-            <Download size={18} />
-            查看下载中心
-          </Link>
+          {user && (
+            <Link to="/downloads" className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-white/10 px-5 py-4 font-black text-white transition hover:bg-white/20">
+              <Download size={18} />
+              查看下载中心
+            </Link>
+          )}
         </aside>
       </div>
     </section>

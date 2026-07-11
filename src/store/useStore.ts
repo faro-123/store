@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { CartItem, User } from '../types';
+import { api } from '../services/api';
 
 type StoreState = {
   cart: CartItem[];
@@ -11,6 +12,7 @@ type StoreState = {
   login: (user: User) => void;
   logout: () => void;
   completeCheckout: () => void;
+  loadPurchased: (productIds: string[]) => void;
 };
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -32,13 +34,25 @@ export const useStore = create<StoreState>((set, get) => ({
   removeFromCart: (productId) =>
     set((state) => ({ cart: state.cart.filter((item) => item.productId !== productId) })),
   clearCart: () => set({ cart: [] }),
-  login: (user) => set({ user }),
-  logout: () => set({ user: null }),
+  login: (user) => {
+    set({ user });
+    if (user.userId) {
+      api.getDownloads(Number(user.userId)).then((data) => {
+        const ids = data.map((p: any) => `remote-${p.id}`);
+        set({ purchased: ids });
+      }).catch(() => {});
+    }
+  },
+  logout: () => set({ user: null, purchased: [] }),
   completeCheckout: () => {
     const ids = get().cart.map((item) => item.productId);
     set((state) => ({
       purchased: Array.from(new Set([...state.purchased, ...ids])),
       cart: []
     }));
-  }
+  },
+  loadPurchased: (productIds) =>
+    set((state) => ({
+      purchased: Array.from(new Set([...state.purchased, ...productIds]))
+    })),
 }));
