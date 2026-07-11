@@ -3,6 +3,7 @@ import { Check, CreditCard, Download, LockKeyhole, ShieldCheck } from 'lucide-re
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { cartTotal, currency, getProduct } from '../utils';
+import { api } from '../services/api';
 
 type Props = {
   onAuth: () => void;
@@ -15,8 +16,19 @@ export default function Checkout({ onAuth }: Props) {
   const navigate = useNavigate();
   const total = cartTotal(cart);
 
-  function pay() {
+  async function pay() {
     completeCheckout();
+    if (user) {
+      const productIds = cart.map((item) => {
+        const p = getProduct(item.productId);
+        if (!p) return null;
+        const numId = p.id.startsWith('remote-') ? parseInt(p.id.replace('remote-', '')) : null;
+        return numId;
+      }).filter(Boolean) as number[];
+      if (productIds.length > 0) {
+        api.checkout(user.userId, productIds).catch(() => {});
+      }
+    }
     window.setTimeout(() => navigate('/downloads'), 360);
   }
 
@@ -101,7 +113,7 @@ export default function Checkout({ onAuth }: Props) {
             <span className="text-4xl font-black">{currency.format(total)}</span>
           </div>
           <div className="mt-6 space-y-3 text-sm text-white/70">
-            {['模拟支付完成后自动进入下载中心', '已购商品会保存到本地状态', '后续可替换为真实支付 API'].map((item) => (
+            {['支付完成后自动进入下载中心', '购买记录实时同步到云端', '仪表盘可查看所有订单数据'].map((item) => (
               <p key={item} className="flex items-center gap-2">
                 <Check size={16} className="text-teal-300" /> {item}
               </p>

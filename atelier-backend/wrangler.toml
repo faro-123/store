@@ -1,0 +1,8 @@
+name = "atelier-api"
+main = "src/index.js"
+compatibility_date = "2026-07-10"
+ 
+[[d1_databases]]
+binding = "DB"
+database_name = "atelier_db"
+database_id = "e5d9c03a-5ac2-42f9-96fc-b4a968d564c9"

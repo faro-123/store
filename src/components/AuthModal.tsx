@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { api } from '../services/api';
 
 type Props = {
   open: boolean;
@@ -13,15 +14,40 @@ export default function AuthModal({ open, onClose }: Props) {
   const logout = useStore((state) => state.logout);
   const user = useStore((state) => state.user);
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [serverMsg, setServerMsg] = useState('');
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setServerMsg('');
     const data = new FormData(event.currentTarget);
-    login({
-      name: String(data.get('name') || 'Designer'),
-      email: String(data.get('email') || 'designer@example.com')
-    });
-    onClose();
+    const username = String(data.get('name') || 'Designer');
+    const password = String(data.get('password') || 'password123');
+    const email = String(data.get('email') || '');
+
+    if (mode === 'register') {
+      try {
+        const res = email
+          ? await api.register(username, password, email)
+          : await api.register(username, password);
+        if (res.success) {
+          const ensured = await api.ensureUser(username, password, email);
+          login({ name: username, email: email || `${username}@example.com`, userId: String(ensured.userId) });
+          onClose();
+        } else {
+          setServerMsg(res.message || '注册失败');
+        }
+      } catch {
+        setServerMsg('网络错误，请稍后重试');
+      }
+    } else {
+      try {
+        const ensured = await api.ensureUser(username, password, email);
+        login({ name: username, email: ensured.userEmail || email || `${username}@example.com`, userId: String(ensured.userId) });
+        onClose();
+      } catch {
+        setServerMsg('网络错误，请稍后重试');
+      }
+    }
   }
 
   return (
@@ -66,15 +92,16 @@ export default function AuthModal({ open, onClose }: Props) {
                       type="button"
                       key={item}
                       className={`flex-1 rounded-full px-3 py-2 text-sm font-bold ${mode === item ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-                      onClick={() => setMode(item)}
+                      onClick={() => { setMode(item); setServerMsg(''); }}
                     >
                       {item === 'login' ? '登录' : '注册'}
                     </button>
                   ))}
                 </div>
-                {mode === 'register' && <input className="field" name="name" placeholder="昵称" />}
-                <input className="field" name="email" type="email" placeholder="邮箱" required />
+                <input className="field" name="name" placeholder="用户名" required />
+                <input className="field" name="email" type="email" placeholder="邮箱" />
                 <input className="field" name="password" type="password" placeholder="密码" required />
+                {serverMsg && <p className="text-sm text-rose-500 font-bold">{serverMsg}</p>}
                 <button className="primary-button w-full" type="submit">
                   {mode === 'login' ? '进入商店' : '创建并登录'}
                 </button>
