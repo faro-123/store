@@ -10,12 +10,12 @@ import { api } from '../services/api';
 type Review = { id: number; product_id: number; rating: number; comment: string; username: string; created_at: string };
 
 const LOCAL_TO_D1_ID: Record<string, string> = {
-  'aurora-kit': '4',
-  'motion-lab': '5',
-  'commerce-canvas': '6',
-  'cms-spark': '7',
-  'chart-foundry': '8',
-  'studio-admin': '9',
+  'aurora-kit': '5',
+  'motion-lab': '6',
+  'commerce-canvas': '7',
+  'cms-spark': '8',
+  'chart-foundry': '9',
+  'studio-admin': '10',
 };
 
 export default function ProductDetail() {
