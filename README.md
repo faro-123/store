@@ -27,3 +27,24 @@ npm run build
 - 产品评分、评价和代码预览
 - 已购产品下载管理
 - 页面切换、卡片悬停、购物车飞入、加载骨架屏等动画
+ 
+## rql
+
+ -- 查看所有商品
+SELECT * FROM products;
+
+-- 查看所有注册用户
+SELECT id, username, email, created_at FROM users ORDER BY created_at DESC;
+
+-- 查看所有订单（含商品名和用户名）
+SELECT o.id, u.username, p.name AS product_name, p.price, o.purchase_date
+FROM orders o
+LEFT JOIN users u ON o.user_id = u.id
+LEFT JOIN products p ON o.product_id = p.id
+ORDER BY o.purchase_date DESC;
+
+-- 查看所有评价
+SELECT r.id, p.name AS product_name, r.rating, r.comment, r.username, r.created_at
+FROM reviews r
+LEFT JOIN products p ON r.product_id = p.id
+ORDER BY r.created_at DESC;

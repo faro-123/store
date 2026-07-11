@@ -19,6 +19,7 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const isDashboard = location.pathname === '/dashboard';
 
   return (
     <div className="min-h-screen bg-[#f7f5ef] text-slate-950 bg-mesh">
@@ -42,7 +43,7 @@ export default function App() {
           </Routes>
         </motion.main>
       </AnimatePresence>
-      <Footer />
+      {!isDashboard && <Footer />}
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />

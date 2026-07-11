@@ -7,10 +7,13 @@ import { useStore } from '../store/useStore';
 
 type Props = {
   product: Product;
+  reviewStats?: { avg_rating: number; count: number };
 };
 
-export default function ProductCard({ product }: Props) {
+export default function ProductCard({ product, reviewStats }: Props) {
   const addToCart = useStore((state) => state.addToCart);
+  const avgRating = reviewStats?.avg_rating ?? 0;
+  const reviewCount = reviewStats?.count ?? 0;
 
   return (
     <motion.article
@@ -49,8 +52,8 @@ export default function ProductCard({ product }: Props) {
         </div>
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1 text-sm font-bold text-slate-700">
-            <Star size={16} fill="#f59e0b" color="#f59e0b" />
-            {product.rating} · {product.reviews} 条评价
+            <Star size={16} fill={avgRating > 0 ? '#f59e0b' : 'none'} color={avgRating > 0 ? '#f59e0b' : '#d1d5db'} />
+            {avgRating > 0 ? avgRating : '-'}{reviewCount > 0 ? ` · ${reviewCount} 条评价` : ''}
           </span>
           <div className="flex gap-2">
             <Link to={`/product/${product.id}`} className="icon-button" aria-label="预览" title="预览">

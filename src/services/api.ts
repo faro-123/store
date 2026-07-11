@@ -66,4 +66,10 @@ export const api = {
     request<{ success: boolean }>(`/api/products/${productId}/reviews`, {
       method: 'POST', body: JSON.stringify({ rating, comment, username }),
     }),
+
+  getAllReviewStats: () =>
+    request<{ product_id: number; avg_rating: number; count: number }[]>('/api/review-stats'),
+
+  getAllReviews: () =>
+    request<{ id: number; product_id: number; rating: number; comment: string; username: string; created_at: string }[]>('/api/review-stats/all'),
 };

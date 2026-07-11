@@ -11,6 +11,17 @@ type Props = {
   onAuth: () => void;
 };
 
+type ReviewStats = { product_id: number; avg_rating: number; count: number };
+
+const D1_NAME_TO_LOCAL_ID: Record<string, string> = {
+  'Aurora UI Kit': 'aurora-kit',
+  'Motion Lab': 'motion-lab',
+  'Commerce Canvas': 'commerce-canvas',
+  'CMS Spark Plugin': 'cms-spark',
+  'Chart Foundry': 'chart-foundry',
+  'Studio Admin Pro': 'studio-admin',
+};
+
 const categoryIcons = {
   ui: Palette,
   tools: Wand2,
@@ -43,11 +54,32 @@ function mapBackendProduct(raw: any): Product {
   };
 }
 
+function resolveReviewStats(productId: string, stats: ReviewStats[]): { avg_rating: number; count: number } | undefined {
+  if (productId.startsWith('remote-')) {
+    const d1Id = parseInt(productId.replace('remote-', ''));
+    return stats.find((s) => s.product_id === d1Id);
+  }
+  const localName = localProducts.find((p) => p.id === productId)?.title;
+  if (!localName) return undefined;
+  const d1IdStr = D1_NAME_TO_LOCAL_ID[localName];
+  const inverse: Record<string, string> = {};
+  for (const [k, v] of Object.entries(D1_NAME_TO_LOCAL_ID)) {
+    inverse[v] = k;
+  }
+  const actualName = inverse[productId];
+  const actualId = Object.keys(D1_NAME_TO_LOCAL_ID).indexOf(localName) >= 0
+    ? parseInt(Object.entries(D1_NAME_TO_LOCAL_ID).find(([, v]) => v === productId)?.[0] ? '' : '0') || 0
+    : 0;
+  const match = stats.find((s) => s.product_id === actualId || s.product_id === parseInt(d1IdStr));
+  return match;
+}
+
 export default function Home({ onAuth }: Props) {
   const [active, setActive] = useState<CategoryId | 'all'>('all');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [remoteProducts, setRemoteProducts] = useState<Product[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats[]>([]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 720);
@@ -57,6 +89,12 @@ export default function Home({ onAuth }: Props) {
   useEffect(() => {
     api.getProducts()
       .then((data) => setRemoteProducts(data.map(mapBackendProduct)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.getAllReviewStats()
+      .then((data) => setReviewStats(data))
       .catch(() => {});
   }, []);
 
@@ -79,6 +117,15 @@ export default function Home({ onAuth }: Props) {
       return matchesCategory && text.includes(query.toLowerCase());
     });
   }, [active, query, products]);
+
+  const LOCAL_D1_ID_MAP: Record<string, number> = {
+    'aurora-kit': 5,
+    'motion-lab': 6,
+    'commerce-canvas': 7,
+    'cms-spark': 8,
+    'chart-foundry': 9,
+    'studio-admin': 10,
+  };
 
   return (
     <>
@@ -176,7 +223,14 @@ export default function Home({ onAuth }: Props) {
           <AnimatePresence mode="popLayout">
             <motion.div layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  reviewStats={product.id.startsWith('remote-')
+                    ? reviewStats.find((s) => s.product_id === parseInt(product.id.replace('remote-', '')))
+                    : reviewStats.find((s) => s.product_id === LOCAL_D1_ID_MAP[product.id])
+                  }
+                />
               ))}
             </motion.div>
           </AnimatePresence>
