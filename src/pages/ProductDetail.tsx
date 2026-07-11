@@ -2,10 +2,11 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ExternalLink, ShoppingBag, Star } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { products } from '../data/products';
+import { products as localProducts } from '../data/products';
 import { useStore } from '../store/useStore';
 import { currency } from '../utils';
 import { api } from '../services/api';
+import { Product, CategoryId } from '../types';
 
 type Review = { id: number; product_id: number; rating: number; comment: string; username: string; created_at: string };
 
@@ -26,10 +27,51 @@ function resolveD1Id(productId: string): string {
 }
 
 export default function ProductDetail() {
-  const { id } = useParams();
-  const product = products.find((item) => item.id === id) ?? products[0];
+  const { id } = useParams<{ id: string }>();
+  const localProduct = localProducts.find((item) => item.id === id);
+  const isRemote = id?.startsWith('remote-');
+
   const addToCart = useStore((state) => state.addToCart);
   const user = useStore((state) => state.user);
+
+  const [remoteProduct, setRemoteProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(isRemote);
+
+  useEffect(() => {
+    if (isRemote && id) {
+      const d1Id = id.replace('remote-', '');
+      setLoading(true);
+      api.getProducts()
+        .then((all) => {
+          const found = all.find((p: any) => String(p.id) === d1Id);
+          if (found) {
+            let tags: string[] = [];
+            try { tags = typeof found.tags === 'string' ? JSON.parse(found.tags) : found.tags || []; } catch {}
+            let features: string[] = [];
+            try { features = typeof found.features === 'string' ? JSON.parse(found.features) : found.features || []; } catch {}
+            setRemoteProduct({
+              id: `remote-${found.id}`,
+              title: found.name || '',
+              category: (['ui', 'tools', 'templates', 'plugins'] as CategoryId[]).includes(found.category) ? found.category as CategoryId : 'tools',
+              description: found.description || '',
+              price: Number(found.price) || 0,
+              rating: 0,
+              reviews: 0,
+              tags,
+              accent: found.accent || '#14b8a6',
+              image: found.image || found.image_url || '',
+              demoUrl: found.demo_url || '',
+              code: found.code_preview || '',
+              features,
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }
+  }, [id, isRemote]);
+
+  const product = localProduct || remoteProduct || localProducts[0];
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -87,6 +129,18 @@ export default function ProductDetail() {
       <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-950">
         <ArrowLeft size={17} /> 返回商店
       </Link>
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-pulse space-y-6 w-full max-w-3xl">
+            <div className="h-[430px] rounded-[34px] bg-slate-200" />
+            <div className="grid grid-cols-2 gap-6">
+              <div className="h-40 rounded-[28px] bg-slate-200" />
+              <div className="h-40 rounded-[28px] bg-slate-200" />
+            </div>
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="grid gap-8 lg:grid-cols-[1.08fr_.92fr]">
         <motion.div layoutId={product.id} className="overflow-hidden rounded-[34px] border border-white/70 bg-white/70 shadow-lift backdrop-blur">
           <img src={product.image} alt={product.title} className="h-[430px] w-full object-cover" />
@@ -203,6 +257,8 @@ export default function ProductDetail() {
           </div>
         )}
       </section>
+      </>
+      )}
     </section>
   );
 }
