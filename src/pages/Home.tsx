@@ -11,6 +11,8 @@ type Props = {
   onAuth: () => void;
 };
 
+type ReviewStats = { product_id: number; avg_rating: number; count: number };
+
 const categoryIcons = {
   ui: Palette,
   tools: Wand2,
@@ -48,6 +50,7 @@ export default function Home({ onAuth }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [remoteProducts, setRemoteProducts] = useState<Product[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats[]>([]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 720);
@@ -57,6 +60,12 @@ export default function Home({ onAuth }: Props) {
   useEffect(() => {
     api.getProducts()
       .then((data) => setRemoteProducts(data.map(mapBackendProduct)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.getAllReviewStats()
+      .then((data) => setReviewStats(data))
       .catch(() => {});
   }, []);
 
@@ -79,6 +88,15 @@ export default function Home({ onAuth }: Props) {
       return matchesCategory && text.includes(query.toLowerCase());
     });
   }, [active, query, products]);
+
+  const LOCAL_D1_ID_MAP: Record<string, number> = {
+    'aurora-kit': 5,
+    'motion-lab': 6,
+    'commerce-canvas': 7,
+    'cms-spark': 8,
+    'chart-foundry': 9,
+    'studio-admin': 10,
+  };
 
   return (
     <>
@@ -176,7 +194,14 @@ export default function Home({ onAuth }: Props) {
           <AnimatePresence mode="popLayout">
             <motion.div layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  reviewStats={product.id.startsWith('remote-')
+                    ? reviewStats.find((s) => s.product_id === parseInt(product.id.replace('remote-', '')))
+                    : reviewStats.find((s) => s.product_id === LOCAL_D1_ID_MAP[product.id])
+                  }
+                />
               ))}
             </motion.div>
           </AnimatePresence>

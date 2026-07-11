@@ -1,9 +1,10 @@
-﻿import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import CartDrawer from './components/CartDrawer';
 import AuthModal from './components/AuthModal';
 import SearchOverlay from './components/SearchOverlay';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
@@ -18,6 +19,7 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const isDashboard = location.pathname === '/dashboard';
 
   return (
     <div className="min-h-screen bg-[#f7f5ef] text-slate-950 bg-mesh">
@@ -41,6 +43,7 @@ export default function App() {
           </Routes>
         </motion.main>
       </AnimatePresence>
+      {!isDashboard && <Footer />}
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />

@@ -1,11 +1,37 @@
 import { Download, FileArchive, PackageOpen } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { products } from '../data/products';
+import { products as localProducts } from '../data/products';
 import { useStore } from '../store/useStore';
+import { api } from '../services/api';
 
 export default function Downloads() {
   const purchased = useStore((state) => state.purchased);
-  const owned = products.filter((product) => purchased.includes(product.id));
+  const user = useStore((state) => state.user);
+  const [remoteDownloaded, setRemoteDownloaded] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      api.getDownloads(Number(user.userId))
+        .then((data) => setRemoteDownloaded(data))
+        .catch(() => {});
+    } else {
+      setRemoteDownloaded([]);
+    }
+  }, [user]);
+
+  const owned = localProducts.filter((product) => purchased.includes(product.id));
+
+  const remoteOwned = remoteDownloaded
+    .filter((rp) => !owned.some((lp) => lp.title === rp.name))
+    .map((rp) => ({
+      id: `remote-${rp.id}`,
+      title: rp.name || rp.title || '',
+      description: rp.description || '',
+      image: rp.image || rp.image_url || '',
+    }));
+
+  const allOwned = [...owned, ...remoteOwned];
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -19,15 +45,15 @@ export default function Downloads() {
         </Link>
       </div>
 
-      {owned.length === 0 ? (
+      {allOwned.length === 0 ? (
         <div className="rounded-[32px] border border-white/70 bg-white/75 p-10 text-center shadow-material backdrop-blur">
           <PackageOpen className="mx-auto text-slate-400" size={48} />
           <h2 className="mt-5 text-2xl font-black">暂无已购产品</h2>
-          <p className="mx-auto mt-3 max-w-md text-slate-500">完成模拟支付后，已购产品会出现在这里，可查看版本、下载包和许可证信息。</p>
+          <p className="mx-auto mt-3 max-w-md text-slate-500">登录后购买的商品会出现在这里。重新登录后已购商品也会自动同步。</p>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
-          {owned.map((product) => (
+          {allOwned.map((product) => (
             <article key={product.id} className="rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-material backdrop-blur">
               <div className="flex gap-4">
                 <img src={product.image} alt={product.title} className="h-24 w-24 rounded-3xl object-cover" />

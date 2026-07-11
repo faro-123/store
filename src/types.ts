@@ -24,4 +24,5 @@ export type CartItem = {
 export type User = {
   name: string;
   email: string;
+  userId: string;
 };

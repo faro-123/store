@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { api } from '../services/api';
 
 type Props = {
   open: boolean;
@@ -13,15 +14,54 @@ export default function AuthModal({ open, onClose }: Props) {
   const logout = useStore((state) => state.logout);
   const user = useStore((state) => state.user);
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [serverMsg, setServerMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setServerMsg('');
     const data = new FormData(event.currentTarget);
-    login({
-      name: String(data.get('name') || 'Designer'),
-      email: String(data.get('email') || 'designer@example.com')
-    });
-    onClose();
+    const username = String(data.get('name') || '').trim();
+    const password = String(data.get('password') || '');
+    const email = String(data.get('email') || '').trim();
+
+    if (!username || !password) {
+      setServerMsg('用户名和密码不能为空');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (mode === 'register') {
+        const res = await api.register(username, password, email || undefined);
+        if (res.success && res.userId) {
+          login({
+            name: username,
+            email: res.email || email || `${username}@example.com`,
+            userId: String(res.userId),
+          });
+          onClose();
+        } else {
+          setServerMsg(res.message || '密码或账号错误');
+        }
+      } else {
+        const res = await api.login(username, password);
+        if (res.success && res.userId) {
+          login({
+            name: username,
+            email: res.email || email || `${username}@example.com`,
+            userId: String(res.userId),
+          });
+          onClose();
+        } else {
+          setServerMsg(res.message || '密码或账号错误');
+        }
+      }
+    } catch (e: any) {
+      setServerMsg(e?.message || '密码或账号错误');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -66,17 +106,18 @@ export default function AuthModal({ open, onClose }: Props) {
                       type="button"
                       key={item}
                       className={`flex-1 rounded-full px-3 py-2 text-sm font-bold ${mode === item ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-                      onClick={() => setMode(item)}
+                      onClick={() => { setMode(item); setServerMsg(''); }}
                     >
                       {item === 'login' ? '登录' : '注册'}
                     </button>
                   ))}
                 </div>
-                {mode === 'register' && <input className="field" name="name" placeholder="昵称" />}
-                <input className="field" name="email" type="email" placeholder="邮箱" required />
+                <input className="field" name="name" placeholder="用户名" required />
+                <input className="field" name="email" type="email" placeholder="邮箱（选填）" />
                 <input className="field" name="password" type="password" placeholder="密码" required />
-                <button className="primary-button w-full" type="submit">
-                  {mode === 'login' ? '进入商店' : '创建并登录'}
+                {serverMsg && <p className="text-sm text-rose-500 font-bold">{serverMsg}</p>}
+                <button className="primary-button w-full" type="submit" disabled={submitting}>
+                  {submitting ? '请稍后...' : mode === 'login' ? '进入商店' : '创建并登录'}
                 </button>
               </form>
             )}

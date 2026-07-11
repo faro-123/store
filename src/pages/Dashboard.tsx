@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { BarChart3, ShoppingCart, Users, ShoppingBag } from 'lucide-react';
 import { api } from '../services/api';
 import StatCard from '../components/StatCard';
@@ -7,8 +7,10 @@ import PurchaseChart from '../components/PurchaseChart';
 import ProductManager from '../components/ProductManager';
 
 type Overview = { totalUsers: number; totalOrders: number; totalRevenue: number };
-type UserInfo = { id: number; username: string; created_at: string };
-type OrderInfo = { id: number; username: string; product_name: string; price: number; purchase_date: string };
+type UserInfo = { id: number; username: string; email: string | null; created_at: string };
+type OrderInfo = { id: number; username: string; user_email: string | null; product_name: string; price: number; purchase_date: string };
+
+const REFRESH_INTERVAL = 10000;
 
 export default function Dashboard() {
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -18,8 +20,10 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<OrderInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const [ov, r, p, u, o] = await Promise.all([
         api.getOverview(),
@@ -36,17 +40,21 @@ export default function Dashboard() {
     } catch (e) {
       console.error('Dashboard load error', e);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData(true);
+    intervalRef.current = setInterval(() => loadData(false), REFRESH_INTERVAL);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [loadData]);
 
   const handleSimulate = async () => {
     setSimulating(true);
     try {
       await api.simulatePurchase();
-      await loadData();
+      await loadData(true);
       setLoading(false);
     } catch (e) {
       console.error('Simulate error', e);
@@ -123,6 +131,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="py-2 pr-4 font-bold">用户名</th>
+                  <th className="py-2 pr-4 font-bold">邮箱</th>
                   <th className="py-2 pr-4 font-bold">注册时间</th>
                 </tr>
               </thead>
@@ -130,11 +139,12 @@ export default function Dashboard() {
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-slate-100">
                     <td className="py-2 pr-4 font-bold">{u.username}</td>
+                    <td className="py-2 pr-4 text-slate-500">{u.email || '-'}</td>
                     <td className="py-2 pr-4 text-slate-500">{new Date(u.created_at).toLocaleString('zh-CN')}</td>
                   </tr>
                 ))}
                 {!users.length && (
-                  <tr><td colSpan={2} className="py-8 text-center text-slate-400">暂无注册用户</td></tr>
+                  <tr><td colSpan={3} className="py-8 text-center text-slate-400">暂无注册用户</td></tr>
                 )}
               </tbody>
             </table>
@@ -151,6 +161,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="py-2 pr-4 font-bold">用户</th>
+                  <th className="py-2 pr-4 font-bold">邮箱</th>
                   <th className="py-2 pr-4 font-bold">商品</th>
                   <th className="py-2 pr-4 font-bold">价格</th>
                   <th className="py-2 pr-4 font-bold">时间</th>
@@ -160,13 +171,14 @@ export default function Dashboard() {
                 {orders.map((o) => (
                   <tr key={o.id} className="border-b border-slate-100">
                     <td className="py-2 pr-4 font-bold">{o.username}</td>
+                    <td className="py-2 pr-4 text-slate-500">{o.user_email || '-'}</td>
                     <td className="py-2 pr-4 text-slate-500">{o.product_name}</td>
                     <td className="py-2 pr-4 font-bold text-amber-600">¥{o.price}</td>
                     <td className="py-2 pr-4 text-xs text-slate-400">{new Date(o.purchase_date).toLocaleString('zh-CN')}</td>
                   </tr>
                 ))}
                 {!orders.length && (
-                  <tr><td colSpan={4} className="py-8 text-center text-slate-400">暂无购买记录，点击上方模拟购买</td></tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-400">暂无购买记录，点击上方模拟购买</td></tr>
                 )}
               </tbody>
             </table>

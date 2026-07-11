@@ -2,7 +2,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, CreditCard, Download, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { cartTotal, currency, getProduct } from '../utils';
+import { cartTotal, currency, findProduct, getProduct } from '../utils';
+import { useEffect, useState } from 'react';
+import { api } from '../services/api';
+import { Product, CategoryId } from '../types';
 
 type Props = {
   onAuth: () => void;
@@ -13,9 +16,58 @@ export default function Checkout({ onAuth }: Props) {
   const user = useStore((state) => state.user);
   const completeCheckout = useStore((state) => state.completeCheckout);
   const navigate = useNavigate();
-  const total = cartTotal(cart);
 
-  function pay() {
+  const [remoteProducts, setRemoteProducts] = useState<{ id: string; title: string; description: string; image: string; price: number; demoUrl: string; features: string[]; tags: string[]; code: string; accent: string }[]>([]);
+
+  useEffect(() => {
+    api.getProducts()
+      .then((data) => {
+        const mapped = data.map((raw: any) => {
+          let tags: string[] = [];
+          try { tags = typeof raw.tags === 'string' ? JSON.parse(raw.tags) : raw.tags || []; } catch {}
+          let features: string[] = [];
+          try { features = typeof raw.features === 'string' ? JSON.parse(raw.features) : raw.features || []; } catch {}
+          return {
+            id: `remote-${raw.id}`,
+            title: raw.name || '',
+            description: raw.description || '',
+            image: raw.image || raw.image_url || '',
+            price: Number(raw.price) || 0,
+            demoUrl: raw.demo_url || '',
+            features,
+            tags,
+            code: raw.code_preview || '',
+            accent: raw.accent || '#14b8a6',
+          };
+        });
+        setRemoteProducts(mapped);
+      })
+      .catch(() => {});
+  }, []);
+
+  const total = cartTotal(cart, remoteProducts);
+
+  async function pay() {
+    if (!user) {
+      onAuth();
+      return;
+    }
+    const productIds = cart.map((item) => {
+      const p = findProduct(item.productId, remoteProducts);
+      if (!p) return null;
+      if (p.id.startsWith('remote-')) return parseInt(p.id.replace('remote-', ''));
+      return p.title;
+    }).filter(Boolean) as (number | string)[];
+
+    if (productIds.length > 0) {
+      try {
+        await fetch('https://atelier-api.farozelmo2436.workers.dev/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: Number(user.userId), productIds }),
+        });
+      } catch {}
+    }
     completeCheckout();
     window.setTimeout(() => navigate('/downloads'), 360);
   }
@@ -44,7 +96,7 @@ export default function Checkout({ onAuth }: Props) {
                   {user.name} <span className="text-slate-400">/ {user.email}</span>
                 </p>
               ) : (
-                <p className="text-sm text-slate-500">可先登录，也可以直接体验模拟支付。</p>
+                <p className="text-sm text-slate-500">请先登录再购买，购买记录将保存到你的账号。</p>
               )}
             </div>
           </section>
@@ -70,7 +122,7 @@ export default function Checkout({ onAuth }: Props) {
             <h2 className="text-xl font-black">订单商品</h2>
             <AnimatePresence>
               {cart.map((item) => {
-                const product = getProduct(item.productId);
+                const product = findProduct(item.productId, remoteProducts);
                 if (!product) return null;
                 return (
                   <motion.div
@@ -101,7 +153,7 @@ export default function Checkout({ onAuth }: Props) {
             <span className="text-4xl font-black">{currency.format(total)}</span>
           </div>
           <div className="mt-6 space-y-3 text-sm text-white/70">
-            {['模拟支付完成后自动进入下载中心', '已购商品会保存到本地状态', '后续可替换为真实支付 API'].map((item) => (
+            {['需登录后购买，记录保存到云端', '购买后可在下载中心查看', '下次登录可重新下载'].map((item) => (
               <p key={item} className="flex items-center gap-2">
                 <Check size={16} className="text-teal-300" /> {item}
               </p>
@@ -109,12 +161,14 @@ export default function Checkout({ onAuth }: Props) {
           </div>
           <button disabled={cart.length === 0} onClick={pay} className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-4 font-black text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-45">
             <CreditCard size={18} />
-            模拟支付
+            {user ? '模拟支付' : '登录后支付'}
           </button>
-          <Link to="/downloads" className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-white/10 px-5 py-4 font-black text-white transition hover:bg-white/20">
-            <Download size={18} />
-            查看下载中心
-          </Link>
+          {user && (
+            <Link to="/downloads" className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-white/10 px-5 py-4 font-black text-white transition hover:bg-white/20">
+              <Download size={18} />
+              查看下载中心
+            </Link>
+          )}
         </aside>
       </div>
     </section>

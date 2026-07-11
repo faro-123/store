@@ -13,15 +13,33 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  register: (username: string, password: string, email?: string) =>
+    request<{ success: boolean; userId?: number; email?: string; message?: string }>('/api/auth/register', {
+      method: 'POST', body: JSON.stringify({ username, password, email }),
+    }),
+
+  login: (username: string, password: string) =>
+    request<{ success: boolean; userId?: number; email?: string; message?: string }>('/api/auth/login', {
+      method: 'POST', body: JSON.stringify({ username, password }),
+    }),
+
+  checkout: (userId: number, productIds: number[]) =>
+    request<{ success: boolean; message: string }>('/api/checkout', {
+      method: 'POST', body: JSON.stringify({ userId, productIds }),
+    }),
+
+  getDownloads: (userId: number) =>
+    request<any[]>(`/api/downloads?userId=${userId}`),
+
   getOverview: () => request<{ totalUsers: number; totalOrders: number; totalRevenue: number }>('/api/stats/overview'),
 
   getRegistrations: (days = 7) => request<{ date: string; count: number }[]>(`/api/stats/registrations?days=${days}`),
 
   getPurchases: (days = 7) => request<{ date: string; orders: number; revenue: number }[]>(`/api/stats/purchases?days=${days}`),
 
-  getUsers: () => request<{ id: number; username: string; created_at: string }[]>('/api/users'),
+  getUsers: () => request<{ id: number; username: string; email: string | null; created_at: string }[]>('/api/users'),
 
-  getOrderDetails: () => request<{ id: number; username: string; product_name: string; price: number; purchase_date: string }[]>('/api/orders'),
+  getOrderDetails: () => request<{ id: number; username: string; user_email: string | null; product_name: string; price: number; purchase_date: string }[]>('/api/orders'),
 
   simulatePurchase: () => request<{ success: boolean; message: string }>('/api/orders/simulate', { method: 'POST' }),
 
@@ -40,4 +58,15 @@ export const api = {
 
   deleteProduct: (id: number) =>
     request<{ success: boolean }>(`/api/products/${id}`, { method: 'DELETE' }),
+
+  getReviews: (productId: string) =>
+    request<{ id: number; product_id: number; rating: number; comment: string; username: string; created_at: string }[]>(`/api/products/${productId}/reviews`),
+
+  addReview: (productId: string, rating: number, comment: string, username: string) =>
+    request<{ success: boolean }>(`/api/products/${productId}/reviews`, {
+      method: 'POST', body: JSON.stringify({ rating, comment, username }),
+    }),
+
+  getAllReviewStats: () =>
+    request<{ product_id: number; avg_rating: number; count: number }[]>('/api/review-stats'),
 };

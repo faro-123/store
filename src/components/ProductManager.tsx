@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Pencil, Trash2, Plus, X } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -19,11 +19,18 @@ type BackendProduct = {
   features: string;
 };
 
+const CATEGORIES = [
+  { value: 'ui', label: 'UI 组件' },
+  { value: 'tools', label: '工具库' },
+  { value: 'templates', label: '完整模板' },
+  { value: 'plugins', label: '插件扩展' },
+];
+
 const emptyProduct = {
   name: '',
   description: '',
   price: 0,
-  category: '',
+  category: 'tools',
   image: '',
   code_preview: '',
   rating: 0,
@@ -41,6 +48,13 @@ export default function ProductManager() {
   const [form, setForm] = useState(emptyProduct);
   const [loading, setLoading] = useState(false);
 
+  const [tagInput, setTagInput] = useState('');
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [featureInput, setFeatureInput] = useState('');
+  const [showFeatureSuggestions, setShowFeatureSuggestions] = useState(false);
+  const tagRef = useRef<HTMLDivElement>(null);
+  const featureRef = useRef<HTMLDivElement>(null);
+
   const load = async () => {
     try {
       const data = await api.getProducts();
@@ -51,6 +65,49 @@ export default function ProductManager() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (tagRef.current && !tagRef.current.contains(e.target as Node)) {
+        setShowTagSuggestions(false);
+      }
+      if (featureRef.current && !featureRef.current.contains(e.target as Node)) {
+        setShowFeatureSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      try {
+        const tags: string[] = typeof p.tags === 'string' ? JSON.parse(p.tags) : p.tags || [];
+        tags.forEach((t) => set.add(t));
+      } catch {}
+    });
+    return Array.from(set).sort();
+  }, [products]);
+
+  const allFeatures = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      try {
+        const feats: string[] = typeof p.features === 'string' ? JSON.parse(p.features) : p.features || [];
+        feats.forEach((f) => set.add(f));
+      } catch {}
+    });
+    return Array.from(set).sort();
+  }, [products]);
+
+  const currentTags = useMemo(() => {
+    try { return typeof form.tags === 'string' ? JSON.parse(form.tags) : form.tags || []; } catch { return []; }
+  }, [form.tags]);
+
+  const currentFeatures = useMemo(() => {
+    try { return typeof form.features === 'string' ? JSON.parse(form.features) : form.features || []; } catch { return []; }
+  }, [form.features]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -87,7 +144,7 @@ export default function ProductManager() {
       name: p.name || '',
       description: p.description || '',
       price: p.price || 0,
-      category: p.category || '',
+      category: p.category || 'tools',
       image: p.image || p.image_url || '',
       code_preview: p.code_preview || '',
       rating: p.rating || 0,
@@ -101,6 +158,28 @@ export default function ProductManager() {
   };
 
   const set = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed || currentTags.includes(trimmed)) return;
+    set('tags', JSON.stringify([...currentTags, trimmed]));
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    set('tags', JSON.stringify(currentTags.filter((t: string) => t !== tag)));
+  };
+
+  const addFeature = (feat: string) => {
+    const trimmed = feat.trim();
+    if (!trimmed || currentFeatures.includes(trimmed)) return;
+    set('features', JSON.stringify([...currentFeatures, trimmed]));
+    setFeatureInput('');
+  };
+
+  const removeFeature = (feat: string) => {
+    set('features', JSON.stringify(currentFeatures.filter((f: string) => f !== feat)));
+  };
 
   return (
     <div className="panel">
@@ -177,30 +256,115 @@ export default function ProductManager() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500">分类</label>
-                  <input value={form.category} onChange={(e) => set('category', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                  <select value={form.category} onChange={(e) => set('category', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">图片 URL</label>
                 <input value={form.image} onChange={(e) => set('image', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-500">评分</label>
-                  <input type="number" step="0.1" value={form.rating} onChange={(e) => set('rating', +e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500">主题色</label>
-                  <input value={form.accent} onChange={(e) => set('accent', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500">代码预览</label>
+                <textarea value={form.code_preview} onChange={(e) => set('code_preview', e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" placeholder="export const Button = () => ..." />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500">标签 (JSON array)</label>
-                <input value={form.tags} onChange={(e) => set('tags', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <label className="text-xs font-bold text-slate-500">演示链接</label>
+                <input value={form.demo_url} onChange={(e) => set('demo_url', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="https://example.com/demo" />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500">特性 (JSON array)</label>
-                <input value={form.features} onChange={(e) => set('features', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <label className="text-xs font-bold text-slate-500">主题色</label>
+                <div className="flex gap-2">
+                  <input value={form.accent} onChange={(e) => set('accent', e.target.value)} className="mt-1 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                  <div className="mt-1 h-9 w-9 rounded-xl border border-slate-200" style={{ backgroundColor: form.accent }} />
+                </div>
+              </div>
+
+              <div ref={tagRef}>
+                <label className="text-xs font-bold text-slate-500">标签</label>
+                <div className="mt-1 flex flex-wrap gap-1 rounded-xl border border-slate-200 px-3 py-2">
+                  {currentTags.map((tag: string) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                      {tag}
+                      <button onClick={() => removeTag(tag)} className="text-slate-400 hover:text-slate-700">&times;</button>
+                    </span>
+                  ))}
+                  <input
+                    value={tagInput}
+                    onChange={(e) => { setTagInput(e.target.value); setShowTagSuggestions(true); }}
+                    onFocus={() => setShowTagSuggestions(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput); setShowTagSuggestions(false); }
+                      if (e.key === 'Backspace' && !tagInput && currentTags.length > 0) {
+                        removeTag(currentTags[currentTags.length - 1]);
+                      }
+                    }}
+                    placeholder={currentTags.length === 0 ? '输入标签后按回车...' : ''}
+                    className="min-w-[100px] flex-1 border-none bg-transparent px-1 py-0.5 text-sm outline-none"
+                  />
+                </div>
+                {showTagSuggestions && tagInput && (
+                  <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {allTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()) && !currentTags.includes(t)).map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => { addTag(tag); setShowTagSuggestions(false); }}
+                        className="w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                    {!allTags.some((t) => t.toLowerCase().includes(tagInput.toLowerCase()) && !currentTags.includes(t)) && (
+                      <div className="px-3 py-1.5 text-xs text-slate-400">按回车添加 "{tagInput}"</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div ref={featureRef}>
+                <label className="text-xs font-bold text-slate-500">特性</label>
+                <div className="mt-1 flex flex-wrap gap-1 rounded-xl border border-slate-200 px-3 py-2">
+                  {currentFeatures.map((feat: string) => (
+                    <span key={feat} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                      {feat}
+                      <button onClick={() => removeFeature(feat)} className="text-slate-400 hover:text-slate-700">&times;</button>
+                    </span>
+                  ))}
+                  <input
+                    value={featureInput}
+                    onChange={(e) => { setFeatureInput(e.target.value); setShowFeatureSuggestions(true); }}
+                    onFocus={() => setShowFeatureSuggestions(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); addFeature(featureInput); setShowFeatureSuggestions(false); }
+                      if (e.key === 'Backspace' && !featureInput && currentFeatures.length > 0) {
+                        removeFeature(currentFeatures[currentFeatures.length - 1]);
+                      }
+                    }}
+                    placeholder={currentFeatures.length === 0 ? '输入特性后按回车...' : ''}
+                    className="min-w-[100px] flex-1 border-none bg-transparent px-1 py-0.5 text-sm outline-none"
+                  />
+                </div>
+                {showFeatureSuggestions && featureInput && (
+                  <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {allFeatures.filter((f) => f.toLowerCase().includes(featureInput.toLowerCase()) && !currentFeatures.includes(f)).map((feat) => (
+                      <button
+                        key={feat}
+                        type="button"
+                        onClick={() => { addFeature(feat); setShowFeatureSuggestions(false); }}
+                        className="w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50"
+                      >
+                        {feat}
+                      </button>
+                    ))}
+                    {!allFeatures.some((f) => f.toLowerCase().includes(featureInput.toLowerCase()) && !currentFeatures.includes(f)) && (
+                      <div className="px-3 py-1.5 text-xs text-slate-400">按回车添加 "{featureInput}"</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
