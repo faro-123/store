@@ -1,1 +1,1 @@
-export const API_BASE_URL = 'https://atelier-api.farozelmo2436.workers.dev';
+export const API_BASE_URL = 'https://real-eyes-deny.loca.lt';
