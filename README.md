@@ -37,6 +37,7 @@
 
 ```
 atelier-store/
+├── start-dev.ps1                # 一键启动脚本（推荐）
 ├── src/                          # 前端源码
 │   ├── main.tsx                  # 应用入口，BrowserRouter 挂载
 │   ├── App.tsx                   # 根组件，路由与全局弹窗状态
@@ -137,7 +138,7 @@ atelier-store/
 
 ### 模拟结算
 - 购物车支持增减数量、清空
-- 下单时先调用后端 `/api/checkout` 写入 orders 表
+- 下单时先调用后端 /api/checkout 写入 orders 表
 - 同时更新 Zustand 本地 purchased 状态
 - 支持本地商品（按名称解析 D1 主键）和云端商品（按 numeric ID 直接匹配）
 
@@ -149,9 +150,9 @@ atelier-store/
 - 每个商品拥有独立的用户评价评论区
 - 1-5 星评分 + 文字评论
 - 评价以评论区风格展示（用户头像首字母、用户名、日期、星级）
-- 评价统计由 D1 聚合查询实时计算（`ROUND(AVG(rating), 1)` + `COUNT(*)`）
+- 评价统计由 D1 聚合查询实时计算
 
-### 仪表盘（仅 `npm run dev` 可见）
+### 仪表盘（仅 npm run dev 可见）
 - 注册用户数 / 订单数 / 总收入 统计卡片
 - 注册趋势图（近 7 天纯 SVG 柱状图）
 - 购买趋势图（订单柱状图 + 收入虚线折线）
@@ -164,23 +165,23 @@ atelier-store/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/products` | 获取商品列表（支持 `?category=` 和 `?search=` 筛选） |
-| POST | `/api/products` | 添加商品 |
-| PUT | `/api/products/:id` | 更新商品 |
-| DELETE | `/api/products/:id` | 删除商品 |
-| POST | `/api/auth/register` | 用户注册 `{ username, password, email? }` |
-| POST | `/api/auth/login` | 用户登录 `{ username, password }` |
-| POST | `/api/checkout` | 模拟支付 `{ userId, productIds }` |
-| GET | `/api/downloads?userId=` | 获取用户已购商品 |
-| GET | `/api/orders` | 所有订单详情（JOIN users + products） |
-| POST | `/api/orders/simulate` | 模拟一笔购买 |
-| GET | `/api/users` | 所有注册用户列表 |
-| GET | `/api/products/:id/reviews` | 获取商品评价列表 |
-| POST | `/api/products/:id/reviews` | 发表商品评价 `{ rating, comment, username }` |
-| GET | `/api/review-stats` | 全站商品评价统计（avg + count） |
-| GET | `/api/stats/overview` | 总用户/订单/收入统计 |
-| GET | `/api/stats/registrations?days=7` | 注册趋势数据 |
-| GET | `/api/stats/purchases?days=7` | 购买趋势数据 |
+| GET | /api/products | 获取商品列表（支持 category= 和 search= 筛选） |
+| POST | /api/products | 添加商品 |
+| PUT | /api/products/:id | 更新商品 |
+| DELETE | /api/products/:id | 删除商品 |
+| POST | /api/auth/register | 用户注册 |
+| POST | /api/auth/login | 用户登录 |
+| POST | /api/checkout | 模拟支付 |
+| GET | /api/downloads?userId= | 获取用户已购商品 |
+| GET | /api/orders | 所有订单详情（JOIN users + products） |
+| POST | /api/orders/simulate | 模拟一笔购买 |
+| GET | /api/users | 所有注册用户列表 |
+| GET | /api/products/:id/reviews | 获取商品评价列表 |
+| POST | /api/products/:id/reviews | 发表商品评价 |
+| GET | /api/review-stats | 全站商品评价统计（avg + count） |
+| GET | /api/stats/overview | 总用户/订单/收入统计 |
+| GET | /api/stats/registrations?days=7 | 注册趋势数据 |
+| GET | /api/stats/purchases?days=7 | 购买趋势数据 |
 
 ## 数据库 Schema
 
@@ -195,7 +196,7 @@ atelier-store/
 | category | TEXT | 分类（ui/tools/templates/plugins） |
 | image / image_url | TEXT | 商品图片 URL |
 | code_preview | TEXT | 代码预览片段 |
-| rating | REAL | 评分（后端存储，实际由 reviews 聚合得出） |
+| rating | REAL | 评分 |
 | reviews_count | INTEGER | 评价数量 |
 | tags | TEXT | JSON 数组（标签列表） |
 | accent | TEXT | 主题色 hex |
@@ -238,52 +239,42 @@ atelier-store/
 - Node.js >= 18
 - npm
 
-### 启动前端
+### 一键启动（推荐）
+
+项目根目录提供了 start-dev.ps1 脚本，打开两个终端窗口分别启动前后端：
+
+终端 1（后端）：
+```bash
+cd atelier-backend
+npx wrangler dev --port 8787
+```
+
+终端 2（前端）：
+```bash
+npm run dev
+```
+
+启动后访问 http://localhost:5173/store/dashboard 进入仪表盘。
+
+### 构建与部署
 
 ```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器（含 HMR）
-npm run dev
-
 # 类型检查 + 构建
 npm run build
 
-# 预览构建产物
-npm run preview
-```
-
-前端开发服务器默认运行在 `http://localhost:5173/store/`。Dashboard 页面仅在开发模式 (`import.meta.env.DEV`) 下可见。
-
-### 启动后端
-
-```bash
+# 部署后端到 Cloudflare
 cd atelier-backend
-
-# 安装依赖
-npm install
-
-# 本地运行 Worker（需要 wrangler）
-npx wrangler dev
-
-# 部署到 Cloudflare
 npx wrangler deploy
 ```
 
-`wrangler dev` 会在本地启动 Miniflare 模拟器，自动创建本地 D1 数据库并应用 schema.sql。
-
 ### 数据库初始化
 
-首次部署后，需要创建 D1 数据库并应用 schema：
+首次使用需要创建 D1 数据库并应用 schema：
 
 ```bash
-# 创建 D1 数据库
+cd atelier-backend
 npx wrangler d1 create atelier_db
-
 # 将 database_id 填入 wrangler.toml
-
-# 应用 schema 和种子数据
 npx wrangler d1 execute atelier_db --file=./schema.sql
 ```
 
@@ -291,13 +282,12 @@ npx wrangler d1 execute atelier_db --file=./schema.sql
 
 ### 前端部署
 
-推送到 `master` 分支后，GitHub Actions 自动执行：
+推送到 master 分支后，GitHub Actions 自动执行：
+1. npm ci 安装依赖
+2. npm run build（tsc --noEmit 类型检查 + vite build）
+3. 将 dist/ 发布到 gh-pages 分支
 
-1. `npm ci` 安装依赖
-2. `npm run build`（先 `tsc --noEmit` 类型检查，再 `vite build`）
-3. 将 `dist/` 发布到 `gh-pages` 分支
-
-部署地址：`https://<username>.github.io/store/`
+部署地址：https://faro-123.github.io/store/
 
 ### 后端部署
 
@@ -306,31 +296,31 @@ cd atelier-backend
 npx wrangler deploy
 ```
 
-部署后 API 地址：`https://atelier-api.farozelmo2436.workers.dev`
+部署后 API 地址：https://atelier-api.farozelmo2436.workers.dev
 
-修改 API 地址：编辑 `src/config.ts` 中的 `API_BASE_URL`。
+修改 API 地址：编辑 src/config.ts 中的 API_BASE_URL。
 
 ## 核心设计决策
 
 ### 商品 ID 映射
 
-本地商品使用字符串 ID（如 `aurora-kit`），云端 D1 商品使用自增数字 ID。系统中采用以下策略统一管理：
+本地商品使用字符串 ID（如 aurora-kit），云端 D1 商品使用自增数字 ID。系统中采用以下策略统一管理：
 
-- **本地→D1 映射**：`LOCAL_TO_D1_ID` 常量维护本地 ID 到 D1 数字 ID 的对应关系
-- **D1→本地反向映射**：`D1_NAME_TO_LOCAL_ID` 在登录时通过商品名称将 D1 商品映射回本地 ID
-- **云端商品**：在 D1 新增的商品使用 `remote-{id}` 格式标识，避免与本地 ID 冲突
-- **结算解析**：`/api/checkout` 接收混合 ID 数组，数字型直接使用，字符串型通过商品名称查找 D1 ID
+- 本地到 D1 映射：LOCAL_TO_D1_ID 常量维护本地 ID 到 D1 数字 ID 的对应关系
+- D1 到本地反向映射：D1_NAME_TO_LOCAL_ID 在登录时通过商品名称将 D1 商品映射回本地 ID
+- 云端商品：在 D1 新增的商品使用 remote-{id} 格式标识，避免与本地 ID 冲突
+- 结算解析：/api/checkout 接收混合 ID 数组，数字型直接使用，字符串型通过商品名称查找 D1 ID
 
 ### 评价系统设计
 
 - 评价数据完全存储在 D1，每次加载详情页时从 API 获取
-- 切换商品时通过 `useEffect` 清空评论状态，确保评价不跨商品泄露
+- 切换商品时通过 useEffect 清空评论状态，确保评价不跨商品泄露
 - 评价统计由服务端聚合查询实时计算，不对 products 表的 rating/reviews_count 列做写入更新
 - 未登录用户无法发表评价
 
 ### 仪表盘权限
 
-Dashboard 路由仅在 `import.meta.env.DEV` 为 true 时注册，生产构建中不包含该页面。确保终端用户无法访问管理功能。
+Dashboard 路由仅在 import.meta.env.DEV 为 true 时注册，生产构建中不包含该页面。确保终端用户无法访问管理功能。
 
 ## License
 

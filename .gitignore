@@ -1,7 +1,1 @@
-node_modules/
-dist/
-*.tsbuildinfo
-.env
-.env.*
-atelier-backend/.wrangler/tmp/
-wrangler-local/
+node_modules/\ndist/\n*.tsbuildinfo\n.env\n.env.*\n
