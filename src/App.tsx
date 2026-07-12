@@ -9,7 +9,8 @@ import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
 import Downloads from './pages/Downloads';
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useEffect } from 'react';
+import { restoreSession } from './store/useStore';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const isDev = import.meta.env.DEV;
@@ -20,6 +21,8 @@ export default function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const isDashboard = location.pathname === '/dashboard';
+
+  useEffect(() => { restoreSession(); }, []);
 
   return (
     <div className="min-h-screen bg-[#f7f5ef] text-slate-950 bg-mesh">
