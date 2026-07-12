@@ -1,1 +1,1 @@
-export const API_BASE_URL = 'https://long-flowers-feel.loca.lt';
+export const API_BASE_URL = 'https://cute-signs-march.loca.lt';
