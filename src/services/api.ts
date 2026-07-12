@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../config';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
     ...options,
   });
   if (!res.ok) {
