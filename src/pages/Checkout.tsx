@@ -2,10 +2,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, CreditCard, Download, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { cartTotal, currency, findProduct, getProduct } from '../utils';
+import { cartTotal, currency, findProduct } from '../utils';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { Product, CategoryId } from '../types';
 
 type Props = {
   onAuth: () => void;
@@ -61,11 +60,7 @@ export default function Checkout({ onAuth }: Props) {
 
     if (productIds.length > 0) {
       try {
-        await fetch('https://atelier-api.farozelmo2436.workers.dev/api/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: Number(user.userId), productIds }),
-        });
+        await api.checkout(Number(user.userId), productIds as number[]);
       } catch {}
     }
     completeCheckout();

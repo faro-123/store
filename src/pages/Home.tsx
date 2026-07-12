@@ -98,6 +98,8 @@ export default function Home({ onAuth }: Props) {
     'studio-admin': 10,
   };
 
+  const heroBadges = ['路由动效', '响应式', '暗色模式'];
+
   return (
     <>
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_420px] lg:py-14">
@@ -142,8 +144,8 @@ export default function Home({ onAuth }: Props) {
               <p className="text-sm font-bold text-white/70">精选模板</p>
               <h2 className="mt-2 text-3xl font-black">Commerce Canvas</h2>
               <div className="mt-5 grid grid-cols-3 gap-3">
-                {['路由动效', '', ''].map((item) => (
-                  <div key={item} className="rounded-2xl bg-white/12 p-3 text-sm font-bold backdrop-blur">
+                {heroBadges.map((item, i) => (
+                  <div key={i} className="rounded-2xl bg-white/12 p-3 text-sm font-bold backdrop-blur">
                     {item}
                   </div>
                 ))}
